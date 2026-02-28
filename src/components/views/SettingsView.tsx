@@ -11,8 +11,25 @@
 import { useState } from "react";
 import { BrainCircuit, Facebook, Zap, ShieldAlert, CheckCircle2, SlidersHorizontal, Key, Link2, RefreshCw } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
+import { useToast } from "@/src/components/ui/ToastContext";
 
 export function SettingsView() {
+  const { showToast } = useToast();
+
+  // 🎛️ STATE: Persisted Settings
+  const [model, setModel] = useLocalStorage("vt_ai_model", "GPT-4o");
+  const [temperature, setTemperature] = useLocalStorage("vt_ai_temp", 0.7);
+  const [dailyLimit, setDailyLimit] = useLocalStorage("vt_daily_limit", "3");
+  const [variance, setVariance] = useLocalStorage("vt_time_variance", 15);
+  const [dupWindow, setDupWindow] = useLocalStorage("vt_dup_window", "30 Days");
+
+  // 🚀 Handle Save Action
+  const handleSave = () => {
+    // In a real app, this might also trigger an API call to sync with a backend
+    showToast("System configuration saved successfully.", "success");
+  };
+
   return (
     // 🎬 Entrance Animation Container
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -29,7 +46,10 @@ export function SettingsView() {
           <p className="text-muted text-sm mt-1">Elite-level control over your automation engine.</p>
         </div>
         {/* Global Save Action */}
-        <button className="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accent-hover transition-all shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:shadow-[0_0_25px_rgba(0,210,255,0.5)]">
+        <button 
+          onClick={handleSave}
+          className="px-6 py-2.5 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accent-hover transition-all shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:shadow-[0_0_25px_rgba(0,210,255,0.5)]"
+        >
           Save Changes
         </button>
       </div>
@@ -42,19 +62,29 @@ export function SettingsView() {
         {/* 🧠 SECTION 1: AI Engine Configuration */}
         <Section title="AI Engine" icon={BrainCircuit} description="Configure your intelligence layer.">
           <div className="space-y-5">
-            {/* API Key Input */}
-            <InputRow label="API Key" type="password" placeholder="sk-..." icon={Key} />
+            {/* Workspace ID (Replaced API Key to follow security guidelines) */}
+            <InputRow label="Workspace ID" type="text" placeholder="wksp_9842..." icon={Key} />
             
             {/* Model Selection */}
-            <SelectRow label="Model Selection" options={["GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]} />
+            <SelectRow 
+              label="Model Selection" 
+              options={["GPT-4o", "Claude 3.5 Sonnet", "Gemini 1.5 Pro"]} 
+              value={model}
+              onChange={(e: any) => setModel(e.target.value)}
+            />
             
             {/* Temperature Slider */}
             <div className="pt-2">
               <div className="flex justify-between text-xs font-medium text-muted uppercase tracking-wider mb-3">
                 <span>Creativity (Temperature)</span>
-                <span className="text-accent font-mono">0.7</span>
+                <span className="text-accent font-mono">{temperature}</span>
               </div>
-              <input type="range" min="0" max="1" step="0.1" defaultValue="0.7" className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent" />
+              <input 
+                type="range" min="0" max="1" step="0.1" 
+                value={temperature}
+                onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent" 
+              />
               <div className="flex justify-between text-[10px] text-muted font-mono px-1 mt-2">
                 <span>Precise</span>
                 <span>Balanced</span>
@@ -107,15 +137,25 @@ export function SettingsView() {
         <Section title="Automation Logic" icon={Zap} description="Control how and when content is generated.">
           <div className="space-y-5">
             {/* Daily Limits */}
-            <SelectRow label="Daily Maximum Posts" options={["1", "2", "3", "5", "Unlimited"]} defaultValue="3" />
+            <SelectRow 
+              label="Daily Maximum Posts" 
+              options={["1", "2", "3", "5", "Unlimited"]} 
+              value={dailyLimit}
+              onChange={(e: any) => setDailyLimit(e.target.value)}
+            />
             
             {/* Variance Slider */}
             <div className="pt-2">
               <div className="flex justify-between text-xs font-medium text-muted uppercase tracking-wider mb-3">
                 <span>Time Randomness (+/- mins)</span>
-                <span className="text-accent font-mono">15m</span>
+                <span className="text-accent font-mono">{variance}m</span>
               </div>
-              <input type="range" min="0" max="60" step="5" defaultValue="15" className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent" />
+              <input 
+                type="range" min="0" max="60" step="5" 
+                value={variance}
+                onChange={(e) => setVariance(parseInt(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent" 
+              />
               <p className="text-[10px] text-muted mt-2">Adds natural variance to scheduled posting times to appear more human.</p>
             </div>
             
@@ -131,7 +171,12 @@ export function SettingsView() {
         <Section title="Safety & Guardrails" icon={ShieldAlert} description="Protect your brand reputation.">
           <div className="space-y-5">
             {/* Duplicate Prevention */}
-            <SelectRow label="Duplicate Prevention Window" options={["7 Days", "14 Days", "30 Days", "90 Days"]} defaultValue="30 Days" />
+            <SelectRow 
+              label="Duplicate Prevention Window" 
+              options={["7 Days", "14 Days", "30 Days", "90 Days"]} 
+              value={dupWindow}
+              onChange={(e: any) => setDupWindow(e.target.value)}
+            />
             
             {/* Safety Toggles */}
             <div className="pt-4 border-t border-border space-y-3">
@@ -214,12 +259,13 @@ function InputRow({ label, type = "text", placeholder, icon: Icon }: any) {
  * ----------------------------------------------------------------------------
  * Standardized dropdown menu.
  */
-function SelectRow({ label, options, defaultValue }: any) {
+function SelectRow({ label, options, value, onChange }: any) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-medium text-muted uppercase tracking-wider">{label}</label>
       <select 
-        defaultValue={defaultValue}
+        value={value}
+        onChange={onChange}
         className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/50 appearance-none cursor-pointer font-medium"
       >
         {options.map((opt: string) => (

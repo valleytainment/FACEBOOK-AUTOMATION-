@@ -9,20 +9,24 @@
  */
 
 import { useState } from "react";
-import { Plus, Zap, Settings2, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Plus, Zap, Settings2, CalendarDays, CheckCircle2, Wand2 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
+import { useToast } from "@/src/components/ui/ToastContext";
 
 // 🗓️ Constants for Grid Generation
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const TIMES = ["9:00 AM", "12:00 PM", "3:00 PM", "6:00 PM", "9:00 PM"];
 
 export function ScheduleView() {
+  const { showToast } = useToast();
+
   // 🎛️ STATE: Global Schedule Settings
-  const [autoFill, setAutoFill] = useState(true);
-  const [manualApproval, setManualApproval] = useState(false);
+  const [autoFill, setAutoFill] = useLocalStorage("vt_schedule_autofill", true);
+  const [manualApproval, setManualApproval] = useLocalStorage("vt_schedule_manual", false);
 
   // 🎛️ STATE: Mock Schedule Data (Day -> Time -> Boolean)
-  const [schedule, setSchedule] = useState<Record<string, Record<string, boolean>>>({
+  const [schedule, setSchedule] = useLocalStorage<Record<string, Record<string, boolean>>>("vt_schedule_grid", {
     "Mon": { "9:00 AM": true, "6:00 PM": true },
     "Tue": { "12:00 PM": true, "6:00 PM": true },
     "Wed": { "9:00 AM": true, "3:00 PM": true },
@@ -46,6 +50,38 @@ export function ScheduleView() {
     }));
   };
 
+  /**
+   * 🚀 Apply Suggestion Action
+   */
+  const handleApplySuggestion = () => {
+    setSchedule(prev => ({
+      ...prev,
+      "Thu": {
+        ...prev["Thu"],
+        "6:00 PM": true // Closest to 6:30 PM for this demo
+      }
+    }));
+    showToast("AI suggestion applied to schedule.", "success");
+  };
+
+  /**
+   * 🪄 Run Auto-Fill Engine
+   * Populates the grid with an optimal posting pattern.
+   */
+  const handleRunAutoFill = () => {
+    const optimalSchedule = {
+      "Mon": { "9:00 AM": true, "12:00 PM": true, "6:00 PM": true },
+      "Tue": { "9:00 AM": true, "3:00 PM": true, "6:00 PM": true },
+      "Wed": { "9:00 AM": true, "12:00 PM": true, "6:00 PM": true },
+      "Thu": { "9:00 AM": true, "3:00 PM": true, "6:00 PM": true },
+      "Fri": { "9:00 AM": true, "12:00 PM": true, "3:00 PM": true, "6:00 PM": true },
+      "Sat": { "12:00 PM": true, "6:00 PM": true },
+      "Sun": { "12:00 PM": true, "6:00 PM": true, "9:00 PM": true },
+    };
+    setSchedule(optimalSchedule);
+    showToast("Auto-fill engine complete. 20 slots optimized for maximum reach.", "success");
+  };
+
   return (
     // 🎬 Entrance Animation Container
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -66,8 +102,18 @@ export function ScheduleView() {
           <p className="text-muted text-sm">Define when the AI should automatically publish content.</p>
         </div>
 
-        {/* Global Toggles */}
+        {/* Global Toggles & Actions */}
         <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
+          
+          {/* 🪄 Auto-Fill Action Button */}
+          <button 
+            onClick={handleRunAutoFill}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-accent text-bg font-semibold text-sm hover:bg-accent-hover transition-all shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:shadow-[0_0_25px_rgba(0,210,255,0.5)]"
+          >
+            <Wand2 className="w-4 h-4" />
+            Run Auto-Fill
+          </button>
+
           {/* Auto-fill Toggle */}
           <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
             <div className="flex flex-col">
@@ -109,7 +155,10 @@ export function ScheduleView() {
         </div>
         
         {/* Action */}
-        <button className="px-4 py-2 rounded-lg bg-accent/20 hover:bg-accent/30 text-accent text-xs font-semibold transition-colors border border-accent/30">
+        <button 
+          onClick={handleApplySuggestion}
+          className="px-4 py-2 rounded-lg bg-accent/20 hover:bg-accent/30 text-accent text-xs font-semibold transition-colors border border-accent/30"
+        >
           Apply Suggestion
         </button>
       </div>

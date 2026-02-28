@@ -21,10 +21,35 @@ import {
   Layers
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useToast } from "@/src/components/ui/ToastContext";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 
 export function DashboardView() {
+  const { showToast } = useToast();
+
   // 🎛️ STATE: Master Automation Switch
   const [isAutomationOn, setIsAutomationOn] = useState(true);
+  
+  // 🎛️ STATE: Read Schedule from LocalStorage
+  const [schedule] = useLocalStorage<Record<string, Record<string, boolean>>>("vt_schedule_grid", {});
+
+  // 🧮 Calculate Dynamic Metrics
+  let totalScheduled = 0;
+  Object.values(schedule).forEach(day => {
+    Object.values(day).forEach(isActive => {
+      if (isActive) totalScheduled++;
+    });
+  });
+
+  const toggleAutomation = () => {
+    const newState = !isAutomationOn;
+    setIsAutomationOn(newState);
+    if (newState) {
+      showToast("Automation Engine Activated. System is live.", "success");
+    } else {
+      showToast("Automation Engine Paused. No posts will be published.", "error");
+    }
+  };
 
   return (
     // 🎬 Entrance Animation Container
@@ -77,7 +102,7 @@ export function DashboardView() {
             {/* Right: Big Toggle Switch */}
             <div className="flex flex-col items-center gap-3">
               <button 
-                onClick={() => setIsAutomationOn(!isAutomationOn)}
+                onClick={toggleAutomation}
                 className={cn(
                   "relative w-20 h-10 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-bg",
                   isAutomationOn ? "bg-success/20 border border-success/50" : "bg-white/5 border border-white/10"
@@ -138,8 +163,8 @@ export function DashboardView() {
           📊 MIDDLE SECTION: METRICS GRID
           ========================================== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard title="Posts Today" value="2" sub="of 3 scheduled" icon={Calendar} />
-        <MetricCard title="Posts This Week" value="14" sub="+2 from last week" icon={BarChart2} trend="up" />
+        <MetricCard title="Posts Today" value="2" sub={`of ${Math.max(2, Math.floor(totalScheduled / 7))} scheduled`} icon={Calendar} />
+        <MetricCard title="Posts This Week" value={totalScheduled.toString()} sub="+2 from last week" icon={BarChart2} trend="up" />
         <MetricCard title="Content Variety" value="86/100" sub="Optimal mix" icon={Layers} trend="up" />
         <MetricCard title="Consistency Streak" value="23" sub="Days without miss" icon={Activity} trend="up" />
       </div>

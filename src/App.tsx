@@ -10,6 +10,9 @@
 
 import { useState } from "react";
 
+// 🍞 Global Providers
+import { ToastProvider } from "./components/ui/ToastContext";
+
 // 📦 Layout Components
 import { Layout } from "./components/layout/Layout";
 
@@ -44,8 +47,10 @@ export default function App() {
 
   // 🎨 RENDER: Wraps the selected view inside the main Layout shell
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {renderView()}
-    </Layout>
+    <ToastProvider>
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        {renderView()}
+      </Layout>
+    </ToastProvider>
   );
 }

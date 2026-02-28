@@ -10,25 +10,57 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Sparkles, RefreshCw, CheckCircle, SlidersHorizontal, Image as ImageIcon } from "lucide-react";
+import { Sparkles, RefreshCw, CheckCircle, SlidersHorizontal, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useToast } from "@/src/components/ui/ToastContext";
+
+// 🧠 AI Service Import
+import { generateFacebookPost } from "@/src/services/geminiService";
 
 export function PlannerView() {
+  const { showToast } = useToast();
+
   // 🎛️ STATE: Generation status and preview content
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // 🎛️ STATE: Form Inputs
+  const [topic, setTopic] = useState("");
+  const [tone, setTone] = useState("motivational");
+  const [length, setLength] = useState(2);
+  
+  // 🎛️ STATE: Toggles (Lifting state up from ToggleRow)
+  const [includeCta, setIncludeCta] = useState(true);
+  const [suggestImage, setSuggestImage] = useState(true);
+  const [useEmojis, setUseEmojis] = useState(true);
 
   /**
    * 🚀 Handle Generate Action
-   * Simulates an API call to generate content based on parameters.
+   * Calls the Gemini API service to generate content based on parameters.
    */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
-    // Simulate network delay
-    setTimeout(() => {
-      setPreviewContent("🚀 Just hit a massive milestone! Consistency is the key to unlocking your potential. Keep pushing, keep grinding, and never settle for average. What's your biggest goal this week? Let me know below! 👇 #Motivation #Grind #Success");
+    setError(null);
+    
+    try {
+      // 🧠 Call the AI Service
+      const generatedText = await generateFacebookPost(
+        topic,
+        tone,
+        length,
+        includeCta,
+        useEmojis
+      );
+      
+      // 📝 Update UI with result
+      setPreviewContent(generatedText);
+    } catch (err: any) {
+      // 🚨 Handle Errors gracefully
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -54,6 +86,8 @@ export function PlannerView() {
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted uppercase tracking-wider">Topic / Core Idea</label>
               <textarea 
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-transparent resize-none h-28 transition-all"
                 placeholder="e.g., The importance of consistency in business..."
               />
@@ -62,7 +96,11 @@ export function PlannerView() {
             {/* 🎭 Tone Dropdown */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted uppercase tracking-wider">Tone of Voice</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/50 appearance-none cursor-pointer">
+              <select 
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/50 appearance-none cursor-pointer"
+              >
                 <option value="motivational">Motivational & High Energy</option>
                 <option value="professional">Professional & Analytical</option>
                 <option value="casual">Casual & Relatable</option>
@@ -74,11 +112,15 @@ export function PlannerView() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted uppercase tracking-wider">Post Length</label>
-                <span className="text-xs font-mono text-accent">Medium</span>
+                <span className="text-xs font-mono text-accent">
+                  {length === 1 ? "Short" : length === 2 ? "Medium" : "Long"}
+                </span>
               </div>
               <input 
                 type="range" 
-                min="1" max="3" defaultValue="2"
+                min="1" max="3" 
+                value={length}
+                onChange={(e) => setLength(parseInt(e.target.value))}
                 className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent"
               />
               <div className="flex justify-between text-[10px] text-muted font-mono px-1">
@@ -90,11 +132,19 @@ export function PlannerView() {
 
             {/* 🎚️ Feature Toggles */}
             <div className="space-y-3 pt-4 border-t border-border">
-              <ToggleRow label="Include Call to Action (CTA)" defaultChecked />
-              <ToggleRow label="Suggest Image Prompt" defaultChecked />
-              <ToggleRow label="Use Emojis" defaultChecked />
+              <ToggleRow label="Include Call to Action (CTA)" checked={includeCta} onChange={setIncludeCta} />
+              <ToggleRow label="Suggest Image Prompt" checked={suggestImage} onChange={setSuggestImage} />
+              <ToggleRow label="Use Emojis" checked={useEmojis} onChange={setUseEmojis} />
             </div>
           </div>
+
+          {/* 🚨 Error Message Area */}
+          {error && (
+            <div className="mt-4 p-3 rounded-lg bg-error/10 border border-error/20 flex items-start gap-2 text-error text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* 🚀 Generate Action Button */}
           <button 
@@ -171,11 +221,13 @@ export function PlannerView() {
                 {previewContent}
               </div>
 
-              {/* Fake Image Placeholder */}
-              <div className="w-full aspect-video bg-[#18191A] border-t border-white/5 flex flex-col items-center justify-center text-[#B0B3B8] gap-2">
-                <ImageIcon className="w-8 h-8 opacity-50" />
-                <span className="text-xs font-mono">AI Image Suggestion: "Person climbing mountain at sunrise"</span>
-              </div>
+              {/* Fake Image Placeholder (Only if toggled) */}
+              {suggestImage && (
+                <div className="w-full aspect-video bg-[#18191A] border-t border-white/5 flex flex-col items-center justify-center text-[#B0B3B8] gap-2">
+                  <ImageIcon className="w-8 h-8 opacity-50" />
+                  <span className="text-xs font-mono">AI Image Suggestion: "A high-quality visual matching the tone"</span>
+                </div>
+              )}
             </motion.div>
           )}
         </div>
@@ -187,11 +239,18 @@ export function PlannerView() {
             animate={{ opacity: 1, y: 0 }}
             className="mt-6 pt-6 border-t border-border flex items-center justify-end gap-4 relative z-10"
           >
-            <button className="px-6 py-2.5 rounded-xl font-medium text-sm text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
+            <button 
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="px-6 py-2.5 rounded-xl font-medium text-sm text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4", isGenerating && "animate-spin")} />
               Regenerate
             </button>
-            <button className="px-6 py-2.5 rounded-xl font-medium text-sm text-bg bg-success hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all flex items-center gap-2">
+            <button 
+              onClick={() => showToast("Post approved and added to schedule queue.", "success")}
+              className="px-6 py-2.5 rounded-xl font-medium text-sm text-bg bg-success hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all flex items-center gap-2"
+            >
               <CheckCircle className="w-4 h-4" />
               Approve & Schedule
             </button>
@@ -207,11 +266,9 @@ export function PlannerView() {
  * ----------------------------------------------------------------------------
  * Reusable toggle switch for boolean settings.
  */
-function ToggleRow({ label, defaultChecked }: { label: string, defaultChecked?: boolean }) {
-  const [checked, setChecked] = useState(defaultChecked || false);
-  
+function ToggleRow({ label, checked, onChange }: { label: string, checked: boolean, onChange: (val: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between py-2 cursor-pointer group" onClick={() => setChecked(!checked)}>
+    <div className="flex items-center justify-between py-2 cursor-pointer group" onClick={() => onChange(!checked)}>
       <span className="text-sm text-white/80 group-hover:text-white transition-colors">{label}</span>
       <div className={cn(
         "w-10 h-5 rounded-full relative transition-colors duration-300",
@@ -225,3 +282,4 @@ function ToggleRow({ label, defaultChecked }: { label: string, defaultChecked?: 
     </div>
   );
 }
+

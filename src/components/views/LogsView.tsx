@@ -10,9 +10,11 @@
 
 import { TerminalSquare, AlertCircle, CheckCircle2, Info, Clock } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
+import { useToast } from "@/src/components/ui/ToastContext";
 
 // 📝 Mock Data: System Logs
-const LOGS = [
+const INITIAL_LOGS = [
   { id: 1, time: "Today 6:00 PM", type: "success", message: "Successfully published post: 'Motivation Post'", details: "Post ID: 1048291048_992831" },
   { id: 2, time: "Today 5:58 PM", type: "info", message: "Generated content for 6:00 PM slot", details: "Model: GPT-4o, Tokens: 142" },
   { id: 3, time: "Today 5:55 PM", type: "info", message: "Automation engine triggered for 6:00 PM slot", details: "" },
@@ -22,6 +24,14 @@ const LOGS = [
 ];
 
 export function LogsView() {
+  const { showToast } = useToast();
+  const [logs, setLogs] = useLocalStorage("vt_system_logs", INITIAL_LOGS);
+
+  const handleClearLogs = () => {
+    setLogs([]);
+    showToast("System logs cleared successfully.", "success");
+  };
+
   return (
     // 🎬 Entrance Animation Container
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-[calc(100vh-8rem)] flex flex-col">
@@ -43,7 +53,10 @@ export function LogsView() {
           <button className="px-4 py-2 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10">
             Export CSV
           </button>
-          <button className="px-4 py-2 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10">
+          <button 
+            onClick={handleClearLogs}
+            className="px-4 py-2 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10"
+          >
             Clear Logs
           </button>
         </div>
@@ -65,9 +78,13 @@ export function LogsView() {
         {/* Scrollable Logs Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
           <div className="space-y-1">
-            {LOGS.map((log) => (
-              <LogEntry key={log.id} log={log} />
-            ))}
+            {logs.length === 0 ? (
+              <div className="text-center py-10 text-muted text-sm font-mono">No logs found. System is quiet.</div>
+            ) : (
+              logs.map((log) => (
+                <LogEntry key={log.id} log={log} />
+              ))
+            )}
           </div>
         </div>
       </div>
