@@ -1,0 +1,86 @@
+/**
+ * ============================================================================
+ * 🎨 GLOBAL STYLESHEET & DESIGN SYSTEM
+ * ============================================================================
+ * Description: Core CSS configuration, Tailwind theme overrides, and custom
+ *              utility classes for the Elite UI.
+ * Theme: Dark, Minimal, High-Contrast, Cyber-Professional
+ * ============================================================================
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+/**
+ * 🎨 THEME VARIABLES
+ * ----------------------------------------------------------------------------
+ * Centralized color palette and typography definitions.
+ */
+@theme {
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Core Colors */
+  --color-bg: #0F1115;           /* Deep space background */
+  --color-card: #161A22;         /* Elevated card background */
+  
+  /* Accents & Status */
+  --color-accent: #00D2FF;       /* Electric Blue - Primary Action */
+  --color-accent-hover: #00B8E6; /* Slightly darker for hover states */
+  --color-success: #10B981;      /* Emerald Green - Positive Status */
+  --color-warning: #F59E0B;      /* Amber - Warnings/Alerts */
+  --color-error: #EF4444;        /* Red - Critical Errors/Destructive */
+  
+  /* Text & Borders */
+  --color-text: #F8FAFC;         /* Off-white for primary readability */
+  --color-muted: #94A3B8;        /* Slate gray for secondary info */
+  --color-border: rgba(255, 255, 255, 0.08); /* Subtle structural lines */
+}
+
+/**
+ * 🏗️ BASE LAYER
+ * ----------------------------------------------------------------------------
+ * Fundamental HTML element styling and scrollbar customization.
+ */
+@layer base {
+  body {
+    @apply bg-bg text-text font-sans antialiased selection:bg-accent/30 selection:text-accent;
+  }
+  
+  /* 📜 Custom Scrollbar - Minimal & Elite */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/20;
+  }
+}
+
+/**
+ * 🛠️ UTILITIES LAYER
+ * ----------------------------------------------------------------------------
+ * Reusable custom classes for complex UI components (Glassmorphism, Glows).
+ */
+@layer utilities {
+  /* Glassmorphism Panel Effect */
+  .glass-panel {
+    @apply bg-card/80 backdrop-blur-md border border-border shadow-lg;
+  }
+  
+  /* Neon Glow Effects */
+  .glow-accent {
+    box-shadow: 0 0 20px -5px var(--color-accent);
+  }
+  
+  .glow-success {
+    box-shadow: 0 0 20px -5px var(--color-success);
+  }
+}
