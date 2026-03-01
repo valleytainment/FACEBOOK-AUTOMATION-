@@ -7,10 +7,14 @@
  * ============================================================================
  */
 
-import { Settings, CheckCircle2, Clock, Zap } from "lucide-react";
+import { Settings, CheckCircle2, Clock, Zap, AlertCircle } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 
 export function TopBar() {
+  // 🎛️ STATE: Read Facebook connection status
+  const [isFbConnected] = useLocalStorage("vt_fb_connected", false);
+
   return (
     // 🛡️ Header Container: Sticky, glassmorphism, flex layout
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-6 z-30 sticky top-0">
@@ -26,7 +30,11 @@ export function TopBar() {
       <div className="hidden md:flex items-center gap-6 mx-auto">
         <StatusIndicator icon={Zap} label="Automation" status="active" />
         <div className="w-px h-4 bg-white/10" /> {/* Divider */}
-        <StatusIndicator icon={CheckCircle2} label="Facebook" status="active" />
+        <StatusIndicator 
+          icon={isFbConnected ? CheckCircle2 : AlertCircle} 
+          label="Facebook" 
+          status={isFbConnected ? "active" : "error"} 
+        />
         <div className="w-px h-4 bg-white/10" /> {/* Divider */}
         <StatusIndicator icon={CheckCircle2} label="AI Model" status="active" />
       </div>

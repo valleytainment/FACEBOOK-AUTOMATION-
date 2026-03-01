@@ -16,6 +16,7 @@ import { useToast } from "@/src/components/ui/ToastContext";
 
 // 🧠 AI Service Import
 import { generateFacebookPost } from "@/src/services/geminiService";
+import { schedulePost } from "@/src/services/facebookService";
 
 export function PlannerView() {
   const { showToast } = useToast();
@@ -60,6 +61,26 @@ export function PlannerView() {
       setError(err.message || "An unexpected error occurred.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  /**
+   * ✅ Handle Approve & Schedule
+   * Saves the generated post to the SQLite database.
+   */
+  const handleApprove = async () => {
+    if (!previewContent) return;
+    
+    try {
+      // Schedule for 2 minutes from now to test the cron job
+      const scheduledTime = new Date(Date.now() + 2 * 60000).toISOString();
+      await schedulePost(previewContent, scheduledTime);
+      
+      showToast(`Post approved and scheduled for ${new Date(scheduledTime).toLocaleTimeString()}`, "success");
+      setPreviewContent(null); // Clear preview after scheduling
+      setTopic(""); // Reset topic
+    } catch (error) {
+      showToast("Failed to schedule post to database.", "error");
     }
   };
 
@@ -248,7 +269,7 @@ export function PlannerView() {
               Regenerate
             </button>
             <button 
-              onClick={() => showToast("Post approved and added to schedule queue.", "success")}
+              onClick={handleApprove}
               className="px-6 py-2.5 rounded-xl font-medium text-sm text-bg bg-success hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all flex items-center gap-2"
             >
               <CheckCircle className="w-4 h-4" />

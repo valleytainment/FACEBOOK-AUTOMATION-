@@ -8,10 +8,10 @@
  * ============================================================================
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // 🍞 Global Providers
-import { ToastProvider } from "./components/ui/ToastContext";
+import { ToastProvider, useToast } from "./components/ui/ToastContext";
 
 // 📦 Layout Components
 import { Layout } from "./components/layout/Layout";
@@ -23,6 +23,30 @@ import { ScheduleView } from "./components/views/ScheduleView";
 import { InsightsView } from "./components/views/InsightsView";
 import { SettingsView } from "./components/views/SettingsView";
 import { LogsView } from "./components/views/LogsView";
+
+/**
+ * 🛡️ Environment Checker
+ * Runs on app load to verify required secrets are present.
+ */
+function EnvChecker() {
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    // Check Facebook Configuration (From DB or Env)
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.FB_CLIENT_ID && !data.FACEBOOK_PAGE_ACCESS_TOKEN) {
+          setTimeout(() => {
+            showToast("Facebook is not configured. Please add your credentials in Settings.", "warning");
+          }, 2500);
+        }
+      })
+      .catch(err => console.error("Failed to check settings:", err));
+  }, [showToast]);
+
+  return null;
+}
 
 export default function App() {
   // 🎛️ STATE: Tracks the currently active navigation tab
@@ -48,6 +72,7 @@ export default function App() {
   // 🎨 RENDER: Wraps the selected view inside the main Layout shell
   return (
     <ToastProvider>
+      <EnvChecker />
       <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
         {renderView()}
       </Layout>

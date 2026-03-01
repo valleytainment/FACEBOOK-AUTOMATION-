@@ -8,10 +8,11 @@
  * ============================================================================
  */
 
-import { TerminalSquare, AlertCircle, CheckCircle2, Info, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TerminalSquare, AlertCircle, CheckCircle2, Info, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/src/lib/utils";
-import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 import { useToast } from "@/src/components/ui/ToastContext";
+import { getScheduledPosts } from "@/src/services/facebookService";
 
 // 📝 Mock Data: System Logs
 const INITIAL_LOGS = [
@@ -25,11 +26,58 @@ const INITIAL_LOGS = [
 
 export function LogsView() {
   const { showToast } = useToast();
-  const [logs, setLogs] = useLocalStorage("vt_system_logs", INITIAL_LOGS);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchLogs = async () => {
+    setIsLoading(true);
+    try {
+      const posts = await getScheduledPosts();
+      
+      // Map DB posts to log format
+      const formattedLogs = posts.map((post: any) => {
+        let type = "info";
+        let message = "Scheduled Post";
+        
+        if (post.status === "published") {
+          type = "success";
+          message = "Successfully published post";
+        } else if (post.status === "failed") {
+          type = "error";
+          message = "Failed to publish post";
+        } else if (post.status === "pending") {
+          type = "info";
+          message = "Post queued for publishing";
+        }
+
+        return {
+          id: post.id,
+          time: new Date(post.scheduled_time).toLocaleString(),
+          type,
+          message,
+          details: `Status: ${post.status.toUpperCase()} | FB ID: ${post.fb_post_id || 'N/A'} | Content: ${post.content.substring(0, 40)}...`
+        };
+      });
+      
+      setLogs(formattedLogs);
+    } catch (error) {
+      showToast("Failed to fetch system logs.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    // Refresh logs every 30 seconds
+    const interval = setInterval(fetchLogs, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleClearLogs = () => {
+    // In a real app, this would call a DELETE endpoint
     setLogs([]);
-    showToast("System logs cleared successfully.", "success");
+    showToast("System logs cleared (UI only).", "success");
   };
 
   return (
@@ -50,8 +98,12 @@ export function LogsView() {
         
         {/* Actions */}
         <div className="flex gap-3">
-          <button className="px-4 py-2 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10">
-            Export CSV
+          <button 
+            onClick={fetchLogs}
+            className="px-4 py-2 rounded-xl bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10 flex items-center gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+            Refresh
           </button>
           <button 
             onClick={handleClearLogs}

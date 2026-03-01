@@ -8,7 +8,7 @@
  * ============================================================================
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrainCircuit, Facebook, Zap, ShieldAlert, CheckCircle2, SlidersHorizontal, Key, Link2, RefreshCw } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { useLocalStorage } from "@/src/hooks/useLocalStorage";
@@ -23,11 +23,98 @@ export function SettingsView() {
   const [dailyLimit, setDailyLimit] = useLocalStorage("vt_daily_limit", "3");
   const [variance, setVariance] = useLocalStorage("vt_time_variance", 15);
   const [dupWindow, setDupWindow] = useLocalStorage("vt_dup_window", "30 Days");
+  
+  // 🎛️ STATE: Facebook Connection
+  const [isFbConnected, setIsFbConnected] = useLocalStorage("vt_fb_connected", false);
+  const [fbPageName, setFbPageName] = useLocalStorage("vt_fb_page_name", "");
+  const [fbPageId, setFbPageId] = useLocalStorage("vt_fb_page_id", "");
+
+  // 🎛️ STATE: Environment Secrets
+  const [secrets, setSecrets] = useState({
+    FB_CLIENT_ID: "",
+    FB_CLIENT_SECRET: "",
+    FACEBOOK_PAGE_ID: "",
+    FACEBOOK_PAGE_ACCESS_TOKEN: ""
+  });
+
+  // 🎧 Load Secrets on Mount
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        setSecrets({
+          FB_CLIENT_ID: data.FB_CLIENT_ID || "",
+          FB_CLIENT_SECRET: data.FB_CLIENT_SECRET || "",
+          FACEBOOK_PAGE_ID: data.FACEBOOK_PAGE_ID || "",
+          FACEBOOK_PAGE_ACCESS_TOKEN: data.FACEBOOK_PAGE_ACCESS_TOKEN || ""
+        });
+      })
+      .catch(err => console.error("Failed to load settings", err));
+  }, []);
+
+  // 🎧 Listen for OAuth Popup Messages
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // In a real app, validate origin. For AI Studio preview, we accept it.
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const { pageId, pageName } = event.data.payload;
+        setIsFbConnected(true);
+        setFbPageName(pageName);
+        setFbPageId(pageId);
+        showToast(`Successfully connected to Facebook Page: ${pageName}`, "success");
+      } else if (event.data?.type === 'OAUTH_ERROR') {
+        showToast(`Facebook connection failed: ${event.data.error}`, "error");
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setIsFbConnected, setFbPageName, setFbPageId, showToast]);
 
   // 🚀 Handle Save Action
-  const handleSave = () => {
-    // In a real app, this might also trigger an API call to sync with a backend
-    showToast("System configuration saved successfully.", "success");
+  const handleSave = async () => {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(secrets)
+      });
+      showToast("System configuration and secrets saved successfully.", "success");
+    } catch (error) {
+      showToast("Failed to save configuration.", "error");
+    }
+  };
+
+  // 🔗 Handle Facebook Connect
+  const handleFbConnect = async () => {
+    try {
+      const response = await fetch('/api/auth/url');
+      const data = await response.json();
+      
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
+
+      const authWindow = window.open(
+        data.url,
+        'oauth_popup',
+        'width=600,height=700'
+      );
+
+      if (!authWindow) {
+        showToast("Popup blocked. Please allow popups for this site.", "error");
+      }
+    } catch (error) {
+      showToast("Failed to initiate Facebook connection.", "error");
+    }
+  };
+
+  // 🔗 Handle Facebook Disconnect
+  const handleFbDisconnect = () => {
+    setIsFbConnected(false);
+    setFbPageName("");
+    setFbPageId("");
+    showToast("Disconnected from Facebook.", "info");
   };
 
   return (
@@ -106,28 +193,47 @@ export function SettingsView() {
         <Section title="Facebook Integration" icon={Facebook} description="Manage page connections and permissions.">
           <div className="space-y-5">
             {/* Connected Page Card */}
-            <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-sm font-bold shadow-inner">
-                  VT
-                </div>
-                <div>
-                  <div className="font-semibold text-white text-sm">Valleytainment</div>
-                  <div className="text-xs text-muted font-mono mt-0.5 flex items-center gap-1">
-                    <Link2 className="w-3 h-3" /> Page ID: 1048291048
+            {isFbConnected ? (
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-sm font-bold shadow-inner">
+                    {fbPageName ? fbPageName.substring(0, 2).toUpperCase() : "FB"}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white text-sm">{fbPageName || "Connected Page"}</div>
+                    <div className="text-xs text-muted font-mono mt-0.5 flex items-center gap-1">
+                      <Link2 className="w-3 h-3" /> Page ID: {fbPageId || "Unknown"}
+                    </div>
                   </div>
                 </div>
+                <button 
+                  onClick={handleFbDisconnect}
+                  className="px-3 py-1.5 rounded-lg bg-error/10 hover:bg-error/20 text-error text-xs font-medium transition-colors border border-error/20 flex items-center gap-2"
+                >
+                  Disconnect
+                </button>
               </div>
-              <button className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors border border-white/10 flex items-center gap-2">
-                <RefreshCw className="w-3 h-3" /> Reconnect
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center bg-white/5 border border-white/10 border-dashed rounded-xl p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                  <Facebook className="w-6 h-6 text-blue-500" />
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-1">No Page Connected</h4>
+                <p className="text-xs text-muted mb-4">Connect your Facebook page to enable auto-publishing.</p>
+                <button 
+                  onClick={handleFbConnect}
+                  className="px-4 py-2 rounded-lg bg-[#1877F2] hover:bg-[#1864D9] text-white text-xs font-semibold transition-colors shadow-md flex items-center gap-2"
+                >
+                  <Link2 className="w-4 h-4" /> Connect Facebook
+                </button>
+              </div>
+            )}
             
             {/* Permissions List */}
             <div className="space-y-3 pt-2">
               <h4 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Permissions Check</h4>
-              <PermissionRow label="Publish Content" active />
-              <PermissionRow label="Read Insights" active />
+              <PermissionRow label="Publish Content" active={isFbConnected} />
+              <PermissionRow label="Read Insights" active={isFbConnected} />
               <PermissionRow label="Manage Comments" active={false} />
             </div>
           </div>
@@ -198,6 +304,47 @@ export function SettingsView() {
             </div>
           </div>
         </Section>
+
+        {/* 🔐 SECTION 5: Environment Secrets */}
+        <Section title="Environment Secrets" icon={Key} description="Manage API keys and secrets on demand.">
+          <div className="space-y-5">
+            <InputRow 
+              label="Facebook App ID (Client ID)" 
+              type="text" 
+              placeholder="e.g. 1048291048..." 
+              icon={Key} 
+              value={secrets.FB_CLIENT_ID}
+              onChange={(e: any) => setSecrets({...secrets, FB_CLIENT_ID: e.target.value})}
+            />
+            <InputRow 
+              label="Facebook App Secret" 
+              type="password" 
+              placeholder="e.g. a1b2c3d4..." 
+              icon={Key} 
+              value={secrets.FB_CLIENT_SECRET}
+              onChange={(e: any) => setSecrets({...secrets, FB_CLIENT_SECRET: e.target.value})}
+            />
+            <div className="pt-4 border-t border-border space-y-5">
+              <h4 className="text-xs font-medium text-muted uppercase tracking-wider">Manual Token Override</h4>
+              <InputRow 
+                label="Facebook Page ID" 
+                type="text" 
+                placeholder="e.g. 123456789..." 
+                icon={Link2} 
+                value={secrets.FACEBOOK_PAGE_ID}
+                onChange={(e: any) => setSecrets({...secrets, FACEBOOK_PAGE_ID: e.target.value})}
+              />
+              <InputRow 
+                label="Page Access Token (Long-Lived)" 
+                type="password" 
+                placeholder="e.g. EAAI..." 
+                icon={Key} 
+                value={secrets.FACEBOOK_PAGE_ACCESS_TOKEN}
+                onChange={(e: any) => setSecrets({...secrets, FACEBOOK_PAGE_ACCESS_TOKEN: e.target.value})}
+              />
+            </div>
+          </div>
+        </Section>
       </div>
     </div>
   );
@@ -236,7 +383,7 @@ function Section({ title, icon: Icon, description, children }: any) {
  * ----------------------------------------------------------------------------
  * Standardized text/password input field with icon.
  */
-function InputRow({ label, type = "text", placeholder, icon: Icon }: any) {
+function InputRow({ label, type = "text", placeholder, icon: Icon, value, onChange }: any) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-medium text-muted uppercase tracking-wider">{label}</label>
@@ -246,6 +393,8 @@ function InputRow({ label, type = "text", placeholder, icon: Icon }: any) {
         </div>
         <input 
           type={type} 
+          value={value}
+          onChange={onChange}
           className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-transparent transition-all font-mono"
           placeholder={placeholder}
         />
